@@ -15,10 +15,13 @@ import (
 
 	"github.com/jessevdk/go-flags"
 	"github.com/mackerelio/checkers"
+	"github.com/mackerelio/mackerel-agent/logging"
 	"github.com/mattn/go-encoding"
 	"github.com/mattn/go-zglob"
 	enc "golang.org/x/text/encoding"
 )
+
+var logger = logging.GetLogger("check.plugin.log")
 
 type logOpts struct {
 	LogFile             string  `short:"f" long:"file" value-name:"FILE" description:"Path to log file"`
@@ -35,6 +38,7 @@ type logOpts struct {
 	NoState             bool    `long:"no-state" description:"Don't use state file and read whole logs"`
 	Encoding            string  `long:"encoding" description:"Encoding of log file"`
 	Missing             string  `long:"missing" default:"UNKNOWN" value-name:"(CRITICAL|WARNING|OK|UNKNOWN)" description:"Exit status when log files missing"`
+	Debug               bool    `long:"debug" description:"Outputs some debug logs to STDERR"`
 	patternReg          *regexp.Regexp
 	excludeReg          *regexp.Regexp
 	fileListFromGlob    []string
@@ -46,6 +50,12 @@ type logOpts struct {
 func (opts *logOpts) prepare() error {
 	if opts.LogFile == "" && opts.FilePattern == "" {
 		return fmt.Errorf("No log file specified")
+	}
+
+	if opts.Debug {
+		logging.SetLogLevel(logging.DEBUG)
+	} else {
+		logging.SetLogLevel(logging.ERROR)
 	}
 
 	var err error
