@@ -76,6 +76,7 @@ func (opts *logOpts) prepare() error {
 		if err != nil && err != os.ErrNotExist {
 			return fmt.Errorf("invalid glob for --file")
 		}
+		logger.Debugf("check against files %s from glob %s", opts.fileListFromGlob, opts.LogFile)
 	}
 
 	if opts.FilePattern != "" {
@@ -167,6 +168,7 @@ func run(args []string) *checkers.Checker {
 	}
 
 	for _, f := range append(opts.fileListFromGlob, opts.fileListFromPattern...) {
+		logger.Debugf("check against file %s", f)
 		_, err := os.Stat(f)
 		if err != nil {
 			missingFiles = append(missingFiles, f)
@@ -176,6 +178,7 @@ func run(args []string) *checkers.Checker {
 		if err != nil {
 			return checkers.Unknown(err.Error())
 		}
+		logger.Debugf("check result for file %s w: %d, c: %d", f, w, c)
 		warnNum += w
 		critNum += c
 		if opts.ReturnContent {
@@ -221,8 +224,10 @@ func (opts *logOpts) searchLog(logFile string) (int64, int64, string, error) {
 			return 0, 0, "", err
 		}
 		skipBytes = s
+		logger.Debugf("skipping %d bytes", skipBytes)
 	}
 
+	logger.Debugf("Opening file %s", logFile)
 	f, err := os.Open(logFile)
 	if err != nil {
 		return 0, 0, "", err
@@ -236,6 +241,7 @@ func (opts *logOpts) searchLog(logFile string) (int64, int64, string, error) {
 
 	rotated := false
 	if stat.Size() < skipBytes {
+		logger.Debugf("Seems rotated")
 		rotated = true
 	} else if skipBytes > 0 {
 		f.Seek(skipBytes, 0)
@@ -262,6 +268,7 @@ func (opts *logOpts) searchLog(logFile string) (int64, int64, string, error) {
 	}
 
 	if !opts.NoState {
+		logger.Debugf("Write to stateFile %s", stateFile)
 		err = writeBytesToSkip(stateFile, skipBytes)
 		if err != nil {
 			log.Printf("writeByteToSkip failed: %s\n", err.Error())
@@ -272,13 +279,18 @@ func (opts *logOpts) searchLog(logFile string) (int64, int64, string, error) {
 
 func (opts *logOpts) searchReader(rdr io.Reader) (warnNum, critNum, readBytes int64, errLines string, err error) {
 	r := bufio.NewReader(rdr)
+	i := 0
 	for {
+		i++
 		lineBytes, rErr := r.ReadBytes('\n')
 		if rErr != nil {
 			if rErr != io.EOF {
 				err = rErr
 			}
 			break
+		}
+		if i%100 == 1 {
+			logger.Debugf("Read %d bytes for %d th line", len(lineBytes), i)
 		}
 		readBytes += int64(len(lineBytes))
 
