@@ -21,7 +21,7 @@ import (
 	enc "golang.org/x/text/encoding"
 )
 
-var logger = logging.GetLogger("check.plugin.log")
+var logger = logging.GetLogger(fmt.Sprintf("check.plugin.log.Pid%d", os.Getpid()))
 
 type logOpts struct {
 	LogFile             string  `short:"f" long:"file" value-name:"FILE" description:"Path to log file"`
