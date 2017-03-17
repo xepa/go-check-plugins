@@ -12,6 +12,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/jessevdk/go-flags"
 	"github.com/mackerelio/checkers"
@@ -110,7 +111,7 @@ func (opts *logOpts) prepare() error {
 
 // Do the plugin
 func Do() {
-	ckr := run(os.Args[1:])
+	ckr := runWithTimeout(os.Args[1:])
 	ckr.Name = "LOG"
 	ckr.Exit()
 }
@@ -145,6 +146,21 @@ func parseArgs(args []string) (*logOpts, error) {
 		opts.StateDir = filepath.Join(workdir, "check-log")
 	}
 	return opts, err
+}
+
+func runWithTimeout(args []string) *checkers.Checker {
+	done := make(chan *checkers.Checker, 1)
+	go func(args []string) {
+		done <- run(args)
+	}(args)
+
+	select {
+	case chr := <-done:
+		return chr
+	case <-time.After(time.Second * 120):
+		// timeout
+	}
+	return checkers.Unknown("timed out")
 }
 
 func run(args []string) *checkers.Checker {
