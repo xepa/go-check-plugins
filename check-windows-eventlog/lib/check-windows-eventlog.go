@@ -21,6 +21,7 @@ import (
 
 	"github.com/jessevdk/go-flags"
 	"github.com/mackerelio/checkers"
+	"github.com/mackerelio/mackerel-agent/logging"
 	"github.com/mackerelio/go-check-plugins/check-windows-eventlog/lib/internal/eventlog"
 )
 
@@ -31,6 +32,7 @@ const (
 var (
 	rid1 = regexp.MustCompile(`^([0-9]+)$`)
 	rid2 = regexp.MustCompile(`^([0-9]+)-([0-9]+)$`)
+	logger = logging.GetLogger("check.windows.eventlog.plugin.log")
 )
 
 type idRange struct {
@@ -54,6 +56,7 @@ type logOpts struct {
 	NoState        bool   `long:"no-state" description:"Don't use state file and read whole logs"`
 	FailFirst      bool   `long:"fail-first" description:"Count errors on first seek"`
 	Verbose        bool   `long:"verbose" description:"Verbose output"`
+	Debug          bool   `long:"debug" description:"Outputs some debug logs to STDERR"`
 
 	logList        []string
 	typeList       []string
@@ -112,6 +115,12 @@ func (opts *logOpts) prepare() error {
 		opts.logList = []string{"Application"}
 	}
 	opts.typeList = stringList(opts.Type)
+
+	if opts.Debug {
+		logging.SetLogLevel(logging.DEBUG)
+	} else {
+		logging.SetLogLevel(logging.ERROR)
+	}
 
 	var err error
 
