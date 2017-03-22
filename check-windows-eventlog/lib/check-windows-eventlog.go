@@ -32,7 +32,7 @@ const (
 var (
 	rid1 = regexp.MustCompile(`^([0-9]+)$`)
 	rid2 = regexp.MustCompile(`^([0-9]+)-([0-9]+)$`)
-	logger = logging.GetLogger("check.windows.eventlog.plugin.log")
+	logger = logging.GetLogger(fmt.Sprintf("check.windows.eventlog.plugin.log.Pid%d", os.Getpid()))
 )
 
 type idRange struct {
@@ -222,6 +222,7 @@ func run(args []string) *checkers.Checker {
 		if err != nil {
 			return checkers.Unknown(err.Error())
 		}
+		logger.Debugf("check result w: %d, c: %d", w, c)
 		warnNum += w
 		critNum += c
 		if opts.ReturnContent {
@@ -258,6 +259,7 @@ func getResourceMessage(providerName, sourceName string, eventID uint32, argsptr
 	regkey := fmt.Sprintf(
 		"SYSTEM\\CurrentControlSet\\Services\\EventLog\\%s\\%s",
 		providerName, sourceName)
+	logger.Debugf("regkey=%s", regkey)
 	key, err := registry.OpenKey(registry.LOCAL_MACHINE, regkey, registry.QUERY_VALUE)
 	if err != nil {
 		return "", err
@@ -292,11 +294,15 @@ func getResourceMessage(providerName, sourceName string, eventID uint32, argsptr
 		uint32(len(msgbuf)),
 		argsptr)
 	if err != nil {
+		logger.Debugf("cannot get message")
 		return "", err
 	}
 	message, _ := bytesToString(msgbuf[:numChars*2])
 	message = strings.Replace(message, "\r", "", -1)
 	message = strings.TrimSuffix(message, "\n")
+
+	logger.Debugf("message=%s", message)
+
 	return message, nil
 }
 
@@ -309,7 +315,10 @@ func (opts *logOpts) searchLog(logName string) (warnNum, critNum int64, errLines
 			return 0, 0, "", err
 		}
 		recordNumber = uint32(s)
+		logger.Debugf("recordNumber from statefile %d", recordNumber)
 	}
+
+	logger.Debugf("Opening file %s", logName)
 
 	ptr := syscall.StringToUTF16Ptr(logName)
 	h, err := eventlog.OpenEventLog(nil, ptr)
@@ -324,10 +333,13 @@ func (opts *logOpts) searchLog(logName string) (warnNum, critNum int64, errLines
 	if err != nil {
 		log.Fatal(err)
 	}
+	logger.Debugf("number of eventlog records: %d", &num)
+
 	eventlog.GetOldestEventLogRecord(h, &oldnum)
 	if err != nil {
 		log.Fatal(err)
 	}
+	logger.Debugf("oldest eventlog records: %d", &oldnum)
 
 	if recordNumber == 0 {
 		if !opts.NoState && !opts.FailFirst {
@@ -352,8 +364,10 @@ func (opts *logOpts) searchLog(logName string) (warnNum, critNum int64, errLines
 	var readBytes uint32
 	var nextSize uint32
 
+	var cnt = 0
 loop_events:
 	for i := recordNumber; i < oldnum+num; i++ {
+		cnt++
 		flags := eventlog.EVENTLOG_FORWARDS_READ | eventlog.EVENTLOG_SEEK_READ
 		if i == 0 {
 			flags = eventlog.EVENTLOG_FORWARDS_READ | eventlog.EVENTLOG_SEQUENTIAL_READ
@@ -510,6 +524,7 @@ loop_events:
 			warnNum++
 		}
 	}
+	logger.Debugf("read eventlog count: %d", cnt)
 
 	if !opts.NoState {
 		err = writeLastOffset(stateFile, int64(lastNumber))
