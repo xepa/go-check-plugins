@@ -7,7 +7,7 @@ else
 GOPATH_ROOT:=${GOPATH}
 endif
 
-all: clean testconvention test build rpm deb
+all: clean testconvention build rpm deb
 
 test: lint
 	go test $(TESTFLAGS) ./...
@@ -35,8 +35,8 @@ lint: devel-deps
 	golint -set_exit_status ./...
 
 testconvention:
-	prove -r t/
-	@go generate ./... && git diff --exit-code || (echo 'please `go generate ./...` and commit them' && exit 1)
+	prove -vr t/
+	@go generate ./... && git diff --exit-code || (echo 'please `go generate ./...` and commit them' && false)
 
 cover: devel-deps
 	gotestcover -v -short -covermode=count -coverprofile=.profile.cov -parallelpackages=4 ./...
