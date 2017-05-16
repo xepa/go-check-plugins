@@ -34,8 +34,10 @@ sub update_makefile {
     };
 }
 
+my $plugin_prefix = 'check-';
+
 sub retrieve_plugins {
-    sort map {s/^check-//; $_} <check-*>;
+    sort map {s/^$plugin_prefix//; $_} <$plugin_prefix*>;
 }
 
 sub update_readme {
@@ -43,11 +45,11 @@ sub update_readme {
 
     my $doc_links = '';
     for my $plug (@plugins) {
-        $doc_links .= "* [check-$plug](./check-$plug/README.md)\n"
+        $doc_links .= "* [$plugin_prefix$plug](./$plugin_prefix$plug/README.md)\n"
     }
     replace 'README.md' => sub {
         my $readme = shift;
-        my $plu_reg = qr/check-[-0-9a-zA-Z_]+/;
+        my $plu_reg = qr/$plugin_prefix[-0-9a-zA-Z_]+/;
         $readme =~ s!(?:\* \[$plu_reg\]\(\./$plu_reg/README\.md\)\n)+!$doc_links!ms;
         $readme;
     };
