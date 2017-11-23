@@ -1,4 +1,4 @@
-package main
+package checksslcert
 
 import (
 	"crypto/tls"
@@ -24,7 +24,7 @@ func parseArgs(args []string) (*certOpts, error) {
 	return opts, err
 }
 
-func main() {
+func Do() {
 	ckr := run(os.Args[1:])
 	ckr.Name = "SSL"
 	ckr.Exit()
@@ -33,7 +33,7 @@ func main() {
 func run(args []string) *checkers.Checker {
 	opts, err := parseArgs(os.Args[1:])
 	if err != nil {
-		os.Exit(1)
+		return checkers.Unknown(err.Error())
 	}
 
 	addr := fmt.Sprintf("%s:%d", opts.Host, opts.Port)
