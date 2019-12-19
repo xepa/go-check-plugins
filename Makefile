@@ -6,6 +6,18 @@ else
 GOPATH_ROOT:=${GOPATH}
 endif
 
+
+PACKAGE  = github.com/mackerelio/go-check-plugins
+GOPATH   = $(CURDIR)/.gopath~
+
+BASE     = $(GOPATH)/src/$(PACKAGE)
+# Create the "fake GOPATH settings"
+$(BASE): ; $(info $(M) setting GOPATH…)
+	$(Q) mkdir -p $(dir $@)
+	$(Q) ln -sf $(CURDIR) $@
+export GOPATH
+GOPATH_ROOT:=${GOPATH}
+
 all: clean testconvention test build rpm deb
 
 test: lint
@@ -40,7 +52,7 @@ testconvention:
 cover: devel-deps
 	gotestcover -v -short -covermode=count -coverprofile=.profile.cov -parallelpackages=4 ./...
 
-build: deps
+build: $(BASE) deps
 	mkdir -p build
 	for i in $(filter-out check-windows-%, $(wildcard check-*)); do \
 	  go build -ldflags "-s -w" -o build/$$i \
